@@ -461,6 +461,8 @@ pub(crate) struct Row<'a> {
     pub(crate) badges: &'a [&'a str],
     /// A button at the row's right end: (icon, tooltip label), e.g. a feature's profile sketch.
     pub(crate) action: Option<(&'a str, &'a str)>,
+    /// A message id the row's tooltip names it by (a body row: mesh, surface or solid body).
+    pub(crate) tip: Option<&'a str>,
     /// Lit by the selection or the 3D view's pointer: the item's own row, or a row leading to it.
     pub(crate) mark: Mark,
 }
@@ -629,10 +631,12 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
         4 => row.action.map(|(_, tip)| crate::i18n::tr_label(tip)),
         _ => None,
     };
-    let resp = match tip {
-        Some(t) => resp.on_hover_text(t),
-        None if elided => resp.on_hover_text(label_display.to_string()),
-        None => resp,
+    let resp = match (tip, row.tip.map(crate::i18n::tr)) {
+        (Some(t), _) => resp.on_hover_text(t),
+        (None, Some(kind)) if elided => resp.on_hover_text(format!("{label_display}\n{kind}")),
+        (None, Some(kind)) => resp.on_hover_text(kind),
+        (None, None) if elided => resp.on_hover_text(label_display.to_string()),
+        (None, None) => resp,
     };
     out.on_control = press_on != 0;
     out.clicked = resp.clicked() && click_on == 0;
@@ -2010,6 +2014,8 @@ struct Entry {
     patterns: Option<String>,
     label: String,
     icon: &'static str,
+    /// The tooltip's message id, if the row has one ([`Row::tip`]).
+    tip: Option<&'static str>,
     visible: bool,
     selected: bool,
     color: Option<Color32>,
@@ -2022,14 +2028,23 @@ struct Entry {
 
 impl Entry {
     fn body(app: &SolveApp, b: &solidcraft_engine::doc::ModelBody, world: String) -> Self {
+        // A mesh body (an imported STL, 3MF, OBJ, …) has no faces to model on; an open shell is a
+        // surface body, not a solid.
+        let (icon, tip) = if b.body.is_mesh() {
+            ("mesh_body", "ui.body_kind_mesh")
+        } else if b.is_surface() {
+            ("surface", "ui.body_kind_surface")
+        } else {
+            ("body", "ui.body_kind_solid")
+        };
         Self {
             thing: Thing::Body(world.clone()),
             key: b.name.clone(),
             row_key: format!("b:{world}"),
             patterns: None,
             label: b.name.clone(),
-            // An open shell is a surface body, not a solid.
-            icon: if b.is_surface() { "surface" } else { "body" },
+            icon,
+            tip: Some(tip),
             visible: !app.session.visibility.hidden_bodies.contains(&world),
             selected: app.session.selection.iter().any(|s| matches!(s, Sel::Body { name } if name == &world)),
             color: None,
@@ -2058,6 +2073,7 @@ impl Entry {
                 f.name.clone()
             },
             icon: "sketch",
+            tip: None,
             visible: sketch_visible(app, f.id),
             selected: active || app.session.selection.iter().any(|s| matches!(s, Sel::Feature { id } if *id == f.id)),
             color: if lost { Some(t.error) } else { active.then_some(t.sketch_accent) },
@@ -2082,6 +2098,7 @@ impl Entry {
             patterns: None,
             label: f.name.clone(),
             icon: crate::timeline::icon_of(&f.kind),
+            tip: None,
             visible: !app.session.visibility.hidden_origin.contains(&f.name),
             selected: app.session.selection.contains(&sel),
             color: None,
@@ -2420,6 +2437,7 @@ fn entry_row(
             fold: pattern_key.map(|_| patterns_open),
             eye: Some(visible),
             icon: e.icon,
+            tip: e.tip,
             label: &e.label,
             name: true,
             selected,

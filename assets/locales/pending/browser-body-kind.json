@@ -1,0 +1,22 @@
+{
+  "en": {
+    "ui.body_kind_mesh": "Mesh body",
+    "ui.body_kind_solid": "Solid body",
+    "ui.body_kind_surface": "Surface body"
+  },
+  "de": {
+    "ui.body_kind_mesh": "Netzkörper",
+    "ui.body_kind_solid": "Volumenkörper",
+    "ui.body_kind_surface": "Flächenkörper"
+  },
+  "ja": {
+    "ui.body_kind_mesh": "メッシュボディ",
+    "ui.body_kind_solid": "ソリッドボディ",
+    "ui.body_kind_surface": "サーフェスボディ"
+  },
+  "zh": {
+    "ui.body_kind_mesh": "网格实体",
+    "ui.body_kind_solid": "实体",
+    "ui.body_kind_surface": "曲面实体"
+  }
+}
